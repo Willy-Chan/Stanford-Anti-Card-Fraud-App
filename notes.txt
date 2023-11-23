@@ -1,0 +1,3 @@
+VIRTUAL ENV:
+myenv\Scripts\activate
+
