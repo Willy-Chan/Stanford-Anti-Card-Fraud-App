@@ -1,11 +1,44 @@
-import streamlit as st
-#from dataParser import getData
-import pandas as pd
-import matplotlib.pyplot as plt
 from data_cleaner import *
-import altair as alt
+
+
+def intro():
+    import streamlit as st
+
+    st.write("# Welcome to Streamlit! 👋")
+    st.sidebar.success("Select a demo above.")
+
+    st.markdown(
+        """
+        Streamlit is an open-source app framework built specifically for
+        Machine Learning and Data Science projects.
+
+        **👈 Select a demo from the dropdown on the left** to see some examples
+        of what Streamlit can do!
+
+        ### Want to learn more?
+
+        - Check out [streamlit.io](https://streamlit.io)
+        - Jump into our [documentation](https://docs.streamlit.io)
+        - Ask a question in our [community
+          forums](https://discuss.streamlit.io)
+
+        ### See more complex demos
+
+        - Use a neural net to [analyze the Udacity Self-driving Car Image
+          Dataset](https://github.com/streamlit/demo-self-driving)
+        - Explore a [New York City rideshare dataset](https://github.com/streamlit/demo-uber-nyc-pickups)
+    """
+    )
+
+def viewMenu():
+    pass
 
 def buildApp(transaction_data, cur_balance_data, swipe_data):
+    import streamlit as st
+    # from dataParser import getData
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    import altair as alt
     # cur_balance_screen data
     card_dollars = cur_balance_data['Meal Plan Cardinal $']
     meals_left = cur_balance_data['15 Meal Plan']
@@ -22,9 +55,13 @@ def buildApp(transaction_data, cur_balance_data, swipe_data):
     total_swipes = grouped_swipe_data['Amount'].sum()
 
     ############ SECTION 0: INTRO
-    st.title('YOUR MEAL PLAN ACCOUNT')
+    st.title('YOUR MEAL DATA')
     st.write(f"Total Amount Spent: ${total_spending:.2f}")
     st.write(f"Total # Swipes Used: {total_swipes}")
+
+    st.button("Login to your Stanford (Google) Account")
+    st.button("Clear Data")
+    st.button("Example Dataset")
 
     ############ SECTION 1: ISOLATED METRICS
     # Streamlit app layout
@@ -42,7 +79,7 @@ def buildApp(transaction_data, cur_balance_data, swipe_data):
     display_column_number(col3, guest_left, 'Number of Guest Swipes Left', 0)
 
     ############ SECTION 2: Segmented Spending Bar
-    st.title('Spending by Location')
+    st.title('Cardinal Dollars Spending by Location')
 
     # Pastel colors for each category
     num_categories = len(grouped_location_spending_data['Location'])
@@ -57,7 +94,7 @@ def buildApp(transaction_data, cur_balance_data, swipe_data):
     st.bar_chart(data=grouped_location_spending_data, x='Location', y='Amount', use_container_width=True)
 
     ############ SECTION 3: Timeseries Spending
-    st.title('Spending by Time')
+    st.title('Cardinal Dollars Spending by Time')
     # Convert to DataFrame
     timeseries_data = get_timeseries_data(transaction_data)
     # Prepare data for area chart: resampling data by day and location
@@ -266,4 +303,16 @@ if __name__ == '__main__':
                  ('09/25/2023 06:09:08 PM', 'Wilbur Dining 152', -1),
                  ('09/25/2023 08:44:59 AM', 'Wilbur Dining 152', -1)]
 
-    buildApp(transaction_data, cur_balance_data, meal_data)
+    page_names_to_funcs = {
+        "-": intro,
+        "Today's Menu": viewMenu(),
+        "Your Meal Data": buildApp,
+    }
+
+    demo_name = st.sidebar.selectbox("Choose a demo", page_names_to_funcs.keys())
+    if demo_name == "Your Meal Data":
+        page_names_to_funcs[demo_name](transaction_data, cur_balance_data, meal_data)
+    else:
+        page_names_to_funcs[demo_name]()
+
+    # buildApp(transaction_data, cur_balance_data, meal_data)
