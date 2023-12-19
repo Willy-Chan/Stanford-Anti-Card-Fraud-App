@@ -1,10 +1,8 @@
 from data_cleaner import *
-
-
 def intro():
     import streamlit as st
 
-    st.write("# Welcome to Streamlit! 👋")
+    st.write("# Welcomefdjkdfkdfsak to Streamlit! 👋")
     st.sidebar.success("Select a demo above.")
 
     st.markdown(
@@ -39,40 +37,54 @@ def buildApp(transaction_data, cur_balance_data, swipe_data):
     import pandas as pd
     import matplotlib.pyplot as plt
     import altair as alt
-    # cur_balance_screen data
-    card_dollars = cur_balance_data['Meal Plan Cardinal $']
-    meals_left = cur_balance_data['15 Meal Plan']
-    guest_left = cur_balance_data['Guest Meals - 5']
 
-    # transactions_screen data
-    raw_transaction_data = get_pos_transaction_data(transaction_data)
-    grouped_location_spending_data = aggregate_loc_names(raw_transaction_data)
-    total_spending = grouped_location_spending_data['Amount'].sum()
+    # Default values
+    card_dollars = 0
+    meals_left = 0
+    guest_left = 0
+    raw_transaction_data = pd.DataFrame({})
+    grouped_location_spending_data = pd.DataFrame({})
+    total_spending = 0
+    raw_swipe_data = pd.DataFrame({})
+    grouped_swipe_data = pd.DataFrame({})
+    total_swipes = 0
 
-    #swipe_screen data
-    raw_swipe_data = get_swipe_transaction_data(swipe_data)
-    grouped_swipe_data = aggregate_swipe_names(raw_swipe_data)
-    total_swipes = grouped_swipe_data['Amount'].sum()
 
     ############ SECTION 0: INTRO
-    st.title('YOUR MEAL DATA')
+    st.title('Stanford Card Data')
+
+    if st.button("Example Dataset"):
+        # cur_balance_screen data
+        card_dollars = cur_balance_data['Meal Plan Cardinal $']
+        meals_left = cur_balance_data['15 Meal Plan']
+        guest_left = cur_balance_data['Guest Meals - 5']
+
+        # transactions_screen data
+        raw_transaction_data = get_pos_transaction_data(transaction_data)
+        grouped_location_spending_data = aggregate_loc_names(raw_transaction_data)
+        total_spending = grouped_location_spending_data['Amount'].sum()
+
+        # swipe_screen data
+        raw_swipe_data = get_swipe_transaction_data(swipe_data)
+        grouped_swipe_data = aggregate_swipe_names(raw_swipe_data)
+        total_swipes = grouped_swipe_data['Amount'].sum()
+    st.button("Clear Data")
+
     st.write(f"Total Amount Spent: ${total_spending:.2f}")
     st.write(f"Total # Swipes Used: {total_swipes}")
-
-    st.button("Login to your Stanford (Google) Account")
-    st.button("Clear Data")
-    st.button("Example Dataset")
 
     ############ SECTION 1: ISOLATED METRICS
     # Streamlit app layout
     st.title('Your Info')
-    st.write('Welcome to my Streamlit app!')
 
     # Create three columns
     col1, col2, col3 = st.columns(3)
 
     # Deltas
-    delta_dollars = raw_transaction_data.sort_values(by='Timestamp', ascending=False).iloc[0]['Amount']
+    if not raw_transaction_data.empty:
+        delta_dollars = raw_transaction_data.sort_values(by='Timestamp', ascending=False).iloc[0]['Amount']
+    else:
+        delta_dollars = 0
     # Display data in each column using st.metric
     display_column_number(col1, card_dollars, 'Cardinal Meal Plan Dollars Left', -delta_dollars)
     display_column_number(col2, meals_left, 'Number of Swipes Left', 0)
@@ -82,25 +94,30 @@ def buildApp(transaction_data, cur_balance_data, swipe_data):
     st.title('Cardinal Dollars Spending by Location')
 
     # Pastel colors for each category
-    num_categories = len(grouped_location_spending_data['Location'])
+    if not grouped_location_spending_data.empty:
+        num_categories = len(grouped_location_spending_data['Location'])
+    else:
+        num_categories = 0
     pastel_colors = plt.cm.Pastel1(range(num_categories))
     # Segmented Total Spending Bar
     fig, ax = plt.subplots()
-    grouped_location_spending_data.set_index('Location').T.plot(kind='bar', stacked=True, ax=ax, color=pastel_colors)
-    ax.set_title('Total Spending: ${:.2f}'.format(total_spending))
-    ax.set_ylabel('Amount Spent ($)')
-    ax.set_xticks([])
-    st.pyplot(fig)
-    st.bar_chart(data=grouped_location_spending_data, x='Location', y='Amount', use_container_width=True)
+    if not grouped_location_spending_data.empty:
+        grouped_location_spending_data.set_index('Location').T.plot(kind='bar', stacked=True, ax=ax, color=pastel_colors)
+        ax.set_title('Total Spending: ${:.2f}'.format(total_spending))
+        ax.set_ylabel('Amount Spent ($)')
+        ax.set_xticks([])
+        st.pyplot(fig)
+        st.bar_chart(data=grouped_location_spending_data, x='Location', y='Amount', use_container_width=True)
 
     ############ SECTION 3: Timeseries Spending
     st.title('Cardinal Dollars Spending by Time')
-    # Convert to DataFrame
-    timeseries_data = get_timeseries_data(transaction_data)
-    # Prepare data for area chart: resampling data by day and location
-    area_chart_data = timeseries_data.set_index('Timestamp').groupby('Location').resample('D')['Amount'].sum().unstack(0, fill_value=0)
-    # # Main Area Chart
-    st.bar_chart(area_chart_data, use_container_width=True, height=600)
+    if not raw_transaction_data.empty:
+        # Convert to DataFrame
+        timeseries_data = get_timeseries_data(transaction_data)
+        # Prepare data for area chart: resampling data by day and location
+        area_chart_data = timeseries_data.set_index('Timestamp').groupby('Location').resample('D')['Amount'].sum().unstack(0, fill_value=0)
+        # # Main Area Chart
+        st.bar_chart(area_chart_data, use_container_width=True, height=600)
 
     ############ SECTION 4: Swipe Spending by Fraction
     # print(raw_swipe_data)
@@ -109,63 +126,65 @@ def buildApp(transaction_data, cur_balance_data, swipe_data):
     st.title('Meal Swipes by Location')
 
     # Pastel colors for each category
-    num_categories = len(grouped_swipe_data['Description'])
-    pastel_colors = plt.cm.Pastel1(range(num_categories))
-    # Segmented Total Spending Bar
-    fig, ax = plt.subplots()
-    grouped_swipe_data.set_index('Description').T.plot(kind='bar', stacked=True, ax=ax, color=pastel_colors)
-    ax.set_title('Total Spending: ${:.2f}'.format(total_spending))
-    ax.set_ylabel('Amount Spent ($)')
-    ax.set_xticks([])
-    st.pyplot(fig)
-    st.bar_chart(data=grouped_swipe_data, x='Description', y='Amount', use_container_width=True)
+    if not grouped_swipe_data.empty:
+        num_categories = len(grouped_swipe_data['Description'])
+        pastel_colors = plt.cm.Pastel1(range(num_categories))
+        # Segmented Total Spending Bar
+        fig, ax = plt.subplots()
+        grouped_swipe_data.set_index('Description').T.plot(kind='bar', stacked=True, ax=ax, color=pastel_colors)
+        ax.set_title('Total Spending: ${:.2f}'.format(total_spending))
+        ax.set_ylabel('Amount Spent ($)')
+        ax.set_xticks([])
+        st.pyplot(fig)
+        st.bar_chart(data=grouped_swipe_data, x='Description', y='Amount', use_container_width=True)
 
     ############ SECTION 5: Swipe Spending overall Time Chart
     st.title('Overall Swipes by Time')
-    df = get_timeseries_swipe_data(meal_data)
-    # Aggregate data by Description and Date
-    aggregated_data = df.groupby([df['Date'].dt.date, 'Description'])['Amount'].sum().reset_index()
-    aggregated_data['Date'] = pd.to_datetime(aggregated_data['Date'])
+    if not raw_transaction_data.empty:
+        df = get_timeseries_swipe_data(meal_data)
+        # Aggregate data by Description and Date
+        aggregated_data = df.groupby([df['Date'].dt.date, 'Description'])['Amount'].sum().reset_index()
+        aggregated_data['Date'] = pd.to_datetime(aggregated_data['Date'])
 
-    # Creating a bar chart with bars touching each other
-    chart = alt.Chart(aggregated_data).mark_bar().encode(
-        x=alt.X('Date:T', axis=alt.Axis(format='%Y-%m-%d'), scale=alt.Scale(padding=0)),
-        y=alt.Y('Amount:Q'),
-        color='Description:N',
-        tooltip=['Date', 'Description', 'Amount']
-    ).properties(width=700, height=400)
+        # Creating a bar chart with bars touching each other
+        chart = alt.Chart(aggregated_data).mark_bar().encode(
+            x=alt.X('Date:T', axis=alt.Axis(format='%Y-%m-%d'), scale=alt.Scale(padding=0)),
+            y=alt.Y('Amount:Q'),
+            color='Description:N',
+            tooltip=['Date', 'Description', 'Amount']
+        ).properties(width=700, height=400)
 
-    # Display the chart in Streamlit
-    st.altair_chart(chart, use_container_width=True)
+        # Display the chart in Streamlit
+        st.altair_chart(chart, use_container_width=True)
 
     ############ SECTION 6: Swipe Spending by Specific Time
     st.title('Meal Swipes by Date and Time')
+    if not raw_transaction_data.empty:
+        # Interactive widgets
+        selected_date = st.date_input("Select a date", min_value=df['Date'].dt.date.min(), max_value=df['Date'].dt.date.max(),
+                                  value=df['Date'].dt.date.max())
 
-    # Interactive widgets
-    selected_date = st.date_input("Select a date", min_value=df['Date'].dt.date.min(), max_value=df['Date'].dt.date.max(),
-                              value=df['Date'].dt.date.max())
+        # Filtering data based on selection
+        filtered_data = df[(df['Date'].dt.date == selected_date)]
 
-    # Filtering data based on selection
-    filtered_data = df[(df['Date'].dt.date == selected_date)]
+        # Convert 'Timestamp' to a string formatted as 'hours:minutes:seconds'
+        filtered_data['TimeString'] = filtered_data['Timestamp'].apply(lambda x: x.strftime('%H:%M:%S'))
 
-    # Convert 'Timestamp' to a string formatted as 'hours:minutes:seconds'
-    filtered_data['TimeString'] = filtered_data['Timestamp'].apply(lambda x: x.strftime('%H:%M:%S'))
+        # Creating a bar chart
+        chart = alt.Chart(filtered_data).mark_bar(size=20).encode(
+            x=alt.X('TimeString:N', title='Time', axis=alt.Axis(labelAngle=0)),  # Use the formatted time string for the x-axis
+            y=alt.Y('Amount:Q'),
+            color='Description:N',
+            tooltip=[
+                alt.Tooltip('Date', title='Date', format='%Y-%m-%d'),
+                'Description',
+                'Amount',
+                alt.Tooltip('Timestamp', title='Time', format='%H:%M:%S')
+            ]
+        ).properties(width=700, height=200)
 
-    # Creating a bar chart
-    chart = alt.Chart(filtered_data).mark_bar(size=20).encode(
-        x=alt.X('TimeString:N', title='Time', axis=alt.Axis(labelAngle=0)),  # Use the formatted time string for the x-axis
-        y=alt.Y('Amount:Q'),
-        color='Description:N',
-        tooltip=[
-            alt.Tooltip('Date', title='Date', format='%Y-%m-%d'),
-            'Description',
-            'Amount',
-            alt.Tooltip('Timestamp', title='Time', format='%H:%M:%S')
-        ]
-    ).properties(width=700, height=200)
-
-    # Display the chart in Streamlit
-    st.altair_chart(chart, use_container_width=True)
+        # Display the chart in Streamlit
+        st.altair_chart(chart, use_container_width=True)
 
 
 if __name__ == '__main__':
@@ -305,14 +324,12 @@ if __name__ == '__main__':
 
     page_names_to_funcs = {
         "-": intro,
-        "Today's Menu": viewMenu(),
+        # "Today's Menu": viewMenu(),
         "Your Meal Data": buildApp,
     }
 
     demo_name = st.sidebar.selectbox("Choose a demo", page_names_to_funcs.keys())
     if demo_name == "Your Meal Data":
         page_names_to_funcs[demo_name](transaction_data, cur_balance_data, meal_data)
-    else:
-        page_names_to_funcs[demo_name]()
 
     # buildApp(transaction_data, cur_balance_data, meal_data)
